@@ -277,6 +277,34 @@ PDEVOBJ_pSurface(
 }
 
 VOID
+PDEVOBJ_vEnableDisplay(
+    _Inout_ PPDEVOBJ ppdev)
+{
+    BOOL assertVal;
+
+    /* Try to enable display until success */
+    do
+    {
+        TRACE("DrvAssertMode(dhpdev %p, TRUE)\n", ppdev->dhpdev);
+        assertVal = ppdev->pfn.AssertMode(ppdev->dhpdev, TRUE);
+        TRACE("DrvAssertMode(dhpdev %p, TRUE) => %d\n", ppdev->dhpdev, assertVal);
+    } while (!assertVal);
+}
+
+BOOL
+PDEVOBJ_bDisableDisplay(
+    _Inout_ PPDEVOBJ ppdev)
+{
+    BOOL assertVal;
+
+    TRACE("DrvAssertMode(dhpdev %p, FALSE)\n", ppdev->dhpdev);
+    assertVal = ppdev->pfn.AssertMode(ppdev->dhpdev, FALSE);
+    TRACE("DrvAssertMode(dhpdev %p, FALSE) => %d\n", ppdev->dhpdev, assertVal);
+
+    return assertVal;
+}
+
+VOID
 NTAPI
 PDEVOBJ_vRefreshModeList(
     PPDEVOBJ ppdev)
@@ -509,9 +537,9 @@ PDEVOBJ_bSwitchMode(
     // pdm = LDEVOBJ_bProbeAndCaptureDevmode(ppdev, pdm);
 
     /* 1. Temporarily disable the current PDEV and reset video to its default mode */
-    if (!ppdev->pfn.AssertMode(ppdev->dhpdev, FALSE))
+    if (!PDEVOBJ_bDisableDisplay(ppdev))
     {
-        DPRINT1("DrvAssertMode(FALSE) failed\n");
+        DPRINT1("PDEVOBJ_bDisableDisplay() failed\n");
         goto leave;
     }
 
@@ -560,10 +588,7 @@ PDEVOBJ_bSwitchMode(
 
 leave2:
     /* Set the new video mode, or restore the original one in case of failure */
-    if (!ppdev->pfn.AssertMode(ppdev->dhpdev, TRUE))
-    {
-        DPRINT1("DrvAssertMode(TRUE) failed\n");
-    }
+    PDEVOBJ_vEnableDisplay(ppdev);
 
 leave:
     /* Unlock everything else */
